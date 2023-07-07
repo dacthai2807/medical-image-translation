@@ -5,7 +5,7 @@ Train a noised image classifier on ImageNet.
 import argparse
 import os
 import sys
-sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
+#sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
 
 import blobfile as bf
 import torch as th

@@ -4,7 +4,7 @@ Train a diffusion model on images.
 
 import argparse
 import sys
-sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
+#sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.image_datasets import load_data, load_PET_data

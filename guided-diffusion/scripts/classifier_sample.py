@@ -6,7 +6,7 @@ process towards more realistic images.
 import argparse
 import os
 import sys
-sys.path.append('/home/aiotlab/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
+#sys.path.append('/home/aiotlab/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
 
 import numpy as np
 import torch as th

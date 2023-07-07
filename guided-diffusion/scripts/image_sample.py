@@ -6,7 +6,7 @@ numpy array. This can be used to produce samples for FID evaluation.
 import argparse
 import os
 import sys
-sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
+#sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
 
 import numpy as np
 import torch as th
