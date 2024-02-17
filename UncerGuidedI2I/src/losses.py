@@ -4,11 +4,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 import scipy.ndimage.filters as fi
 import matplotlib.pyplot as plt
+import os
 
-def compute_mae(imgRef, imgT):
-    mae = np.sum(np.abs(imgRef - imgT)) / (imgT.size + 1e-7)
+def remove_file(fpath):
+    if os.path.exists(fpath):
+        os.remove(fpath)
 
-    return mae
+def compute_mae(image1, image2):
+    return np.abs(image1 - image2).mean()
+
+def compute_mape(image1, image2):
+    return np.abs((image1 - image2) / (image1 + 1e-6)).mean() * 100
 
 def unscale_image(scaled_image: np.array, original_range: list, scaled_range:list =[0, 1]):
     minmax_form = (scaled_image - scaled_range[0]) / (scaled_range[1] - scaled_range[0])

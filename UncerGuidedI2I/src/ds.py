@@ -1,56 +1,61 @@
-import torch.utils.data as data
-import os.path
+from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+from PIL import Image
+from pathlib import Path
 import numpy as np
-import random
-import torch
-random.seed(0)
+import cv2 as cv
 
-class PETnCTDataset(data.Dataset):
-    '''
-    can act as supervised or un-supervised based on flists
-    '''
-    def __init__(self, pet_root, ct_root, pet_flist, ct_flist, res=[128, 128], do_aug=True):
-        self.pet_root = pet_root
-        self.ct_root = ct_root
-        self.pet_flist = pet_flist
-        self.ct_flist = ct_flist
-        self.res = res
-        self.do_aug = do_aug
-    def __getitem__(self, index):
-        pet_impath = self.pet_flist[index]
-        pet_img = np.load(os.path.join(self.pet_root, pet_impath))
-        ct_impath = self.ct_flist[index]
-        ct_img = np.load(os.path.join(self.ct_root, ct_impath))
+class PETCTDataset(Dataset):
+    def __init__(self, ct_paths, pet_paths, image_size=(256, 256), ct_max_pixel=255.0, pet_max_pixel=255.0, flip=False):
+        self.image_size = image_size
+        self.ct_paths = ct_paths
+        self.pet_paths = pet_paths
+        self._length = len(ct_paths)
+        self.ct_max_pixel = float(ct_max_pixel)
+        self.pet_max_pixel = float(pet_max_pixel)
+        self.flip = flip
         
-        if self.do_aug:
-            p1 = random.random()
-            if p1 < 0.5:
-                pet_img, ct_img = np.fliplr(pet_img), np.fliplr(ct_img)
-            p2 = random.random()
-            if p2 < 0.5:
-                pet_img, ct_img = np.flipud(pet_img), np.flipud(ct_img)
-        # crop
-        from skimage.transform import resize
-        ct_img = resize(ct_img, (self.res[0], self.res[1]))
-        pet_img = resize(pet_img, (self.res[0], self.res[1]))
-        # normalize
-        pet_min = pet_img.min()
-        pet_max = pet_img.max()
-        pet_img = (pet_img - pet_min) / (pet_max - pet_min) 
-        ct_min = ct_img.min()
-        ct_max = ct_img.max()
-        ct_img = (ct_img - ct_min) / (ct_max - ct_min) 
-
-        ct_img = torch.from_numpy(ct_img).unsqueeze(0).unsqueeze(0)
-        pet_img = torch.from_numpy(pet_img).unsqueeze(0).unsqueeze(0)
-
-        return {
-            'ct': ct_img,
-            'pet': pet_img,
-            'ct_min': ct_min,
-            'ct_max': ct_max,
-            'pet_min': pet_min,
-            'pet_max': pet_max
-        }
     def __len__(self):
-        return len(self.ct_flist)
+        if self.flip:
+            return self._length * 2
+        return self._length
+
+    def __getitem__(self, index):
+        p = 0.0
+        
+        if index >= self._length:
+            index = index - self._length
+            p = 1.0
+
+        transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(p=p),
+            transforms.Resize(self.image_size),
+            transforms.ToTensor()
+        ])
+        
+        ct_path = self.ct_paths[index]
+        pet_path = self.pet_paths[index]
+        
+        try:
+            np_ct_image = np.load(ct_path, allow_pickle=True)
+            np_ct_image = np_ct_image / float(self.ct_max_pixel)
+
+            ct_image = Image.fromarray(np_ct_image) 
+            ct_image = transform(ct_image) 
+
+            np_pet_image = np.load(pet_path, allow_pickle=True)
+            np_pet_image = np_pet_image / float(self.pet_max_pixel)
+            
+            pet_image = Image.fromarray(np_pet_image) 
+            pet_image = transform(pet_image) 
+            
+            pet_image = (pet_image - 0.5) * 2.
+            
+        except BaseException as e:
+            print(ct_path)
+            print(pet_path)
+        
+        image_name = Path(ct_path).stem
+        
+        return ct_image, pet_image, image_name
+      
