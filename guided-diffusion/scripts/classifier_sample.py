@@ -6,12 +6,15 @@ process towards more realistic images.
 import argparse
 import os
 import sys
-#sys.path.append('/home/aiotlab/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
+sys.path.append('/home/PET-CT/thaind/medical-image-translation/guided-diffusion')
 
+import torch
 import numpy as np
 import torch as th
 import torch.distributed as dist
 import torch.nn.functional as F
+
+SAMPLE_PATH = '/home/PET-CT/thaind/medical-image-translation/guided-diffusion/samples'
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.script_util import (
@@ -24,6 +27,22 @@ from guided_diffusion.script_util import (
     args_to_dict,
 )
 
+@torch.no_grad()
+def save_single_image(image, save_path, file_name, max_pixel, to_normal=True):
+    image = image.detach().clone()
+    if to_normal:
+        image = image.mul_(0.5).add_(0.5).clamp_(0, 1.)
+    if max_pixel == 1:
+        image = image.permute(1, 2, 0).to('cpu').numpy()
+    else:
+        image = image.mul_(max_pixel).add_(0.2).clamp_(0, max_pixel).permute(1, 2, 0).to('cpu').numpy()
+
+    print(os.path.join(save_path, file_name))
+    np.save(os.path.join(save_path, file_name), image)
+
+def make_dir(dir):
+    os.makedirs(dir, exist_ok=True)
+    return dir
 
 def main():
     args = create_argparser().parse_args()
@@ -69,6 +88,8 @@ def main():
     logger.log("sampling...")
     all_images = []
     all_labels = []
+    cnt = 0
+    
     while len(all_images) * args.batch_size < args.num_samples:
         model_kwargs = {}
         classes = th.randint(
@@ -80,34 +101,45 @@ def main():
         )
         sample = sample_fn(
             model_fn,
-            (args.batch_size, 3, args.image_size, args.image_size),
+            # (args.batch_size, 3, args.image_size, args.image_size),
+            (args.batch_size, 1, args.image_size, args.image_size),
             clip_denoised=args.clip_denoised,
             model_kwargs=model_kwargs,
             cond_fn=cond_fn,
             device=dist_util.dev(),
         )
-        sample = (sample + 1) / 2
-        #sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
-        sample = sample.permute(0, 2, 3, 1)
-        sample = sample.contiguous()
+        # sample = (sample + 1) / 2
+        # #sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
+        # sample = sample.permute(0, 2, 3, 1)
+        # sample = sample.contiguous()
 
-        gathered_samples = [th.zeros_like(sample) for _ in range(dist.get_world_size())]
-        dist.all_gather(gathered_samples, sample)  # gather not supported with NCCL
-        all_images.extend([sample.cpu().numpy() for sample in gathered_samples])
-        gathered_labels = [th.zeros_like(classes) for _ in range(dist.get_world_size())]
-        dist.all_gather(gathered_labels, classes)
-        all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
-        logger.log(f"created {len(all_images) * args.batch_size} samples")
+        # gathered_samples = [th.zeros_like(sample) for _ in range(dist.get_world_size())]
+        # dist.all_gather(gathered_samples, sample)  # gather not supported with NCCL
+        # all_images.extend([sample.cpu().numpy() for sample in gathered_samples])
+        # gathered_labels = [th.zeros_like(classes) for _ in range(dist.get_world_size())]
+        # dist.all_gather(gathered_labels, classes)
+        # all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
+        # logger.log(f"created {len(all_images) * args.batch_size} samples")
+        
+        n = sample.shape[0]
+            
+        for t in range(n):
+            # gt_path = make_dir(os.path.join(SAMPLE_PATH, 'ground_truth'))
+            # save_single_image(xB[t], gt_path, f'{x_name[t]}.npy', max_pixel=32767, to_normal=True)
 
-    arr = np.concatenate(all_images, axis=0)
-    arr = arr[: args.num_samples]
-    label_arr = np.concatenate(all_labels, axis=0)
-    label_arr = label_arr[: args.num_samples]
-    if dist.get_rank() == 0:
-        shape_str = "x".join([str(x) for x in arr.shape])
-        out_path = os.path.join(logger.get_dir(), f"samples_{shape_str}.npz")
-        logger.log(f"saving to {out_path}")
-        np.savez(out_path, arr, label_arr)
+            pred_path = make_dir(os.path.join(SAMPLE_PATH, 'predicted'))
+            save_single_image(sample[t], pred_path, f'{cnt}.npy', max_pixel=32767., to_normal=True)
+            cnt = cnt + 1
+
+    # arr = np.concatenate(all_images, axis=0)
+    # arr = arr[: args.num_samples]
+    # label_arr = np.concatenate(all_labels, axis=0)
+    # label_arr = label_arr[: args.num_samples]
+    # if dist.get_rank() == 0:
+    #     shape_str = "x".join([str(x) for x in arr.shape])
+    #     out_path = os.path.join(logger.get_dir(), f"samples_{shape_str}.npz")
+    #     logger.log(f"saving to {out_path}")
+    #     np.savez(out_path, arr, label_arr)
 
     dist.barrier()
     logger.log("sampling complete")

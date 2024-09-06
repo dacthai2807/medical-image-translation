@@ -1,7 +1,8 @@
 import math
 import random
 import os
-
+import torchvision.transforms as transforms
+from pathlib import Path
 from PIL import Image
 import blobfile as bf
 from mpi4py import MPI
@@ -118,6 +119,79 @@ def load_CT_data(
         )
     while True:
         yield from loader
+
+class PairedPETnCTDataset(Dataset):
+    def __init__(self, ct_paths, pet_paths, image_size=(256, 256), ct_max_pixel=255.0, pet_max_pixel=255.0, flip=False, class_cond=True):
+        self.image_size = image_size
+        self.ct_paths = ct_paths
+        self.pet_paths = pet_paths
+        self._length = len(ct_paths) + len(pet_paths)
+        self.ct_max_pixel = float(ct_max_pixel)
+        self.pet_max_pixel = float(pet_max_pixel)
+        self.flip = flip
+        self.class_cond = class_cond
+        
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, index):
+        if self.flip:
+            p = 0.5 
+        else:
+            p = 0.
+
+        transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(p=p),
+            transforms.Resize(self.image_size),
+            transforms.ToTensor()
+        ])
+        
+        if index < len(self.ct_paths):
+            ct_path = self.ct_paths[index]
+
+            try:
+                np_ct_image = np.load(ct_path, allow_pickle=True)
+                np_ct_image = np_ct_image / float(self.ct_max_pixel)
+
+                ct_image = Image.fromarray(np_ct_image) 
+                ct_image = transform(ct_image) 
+                
+            except BaseException as e:
+                print(ct_path)
+            
+            image_name = Path(ct_path).stem
+            
+            out_dict = {}
+            
+            if self.class_cond == True:
+                ct_lab = 0 
+                out_dict["y"] = np.array(ct_lab, dtype=np.int64)
+            
+            return ct_image, out_dict, image_name
+        
+        pet_path = self.pet_paths[index - len(self.ct_paths)]
+
+        try:
+            np_pet_image = np.load(pet_path, allow_pickle=True)
+            np_pet_image = np_pet_image / float(self.pet_max_pixel)
+            
+            pet_image = Image.fromarray(np_pet_image) 
+            pet_image = transform(pet_image) 
+            
+            pet_image = (pet_image - 0.5) * 2.
+            
+        except BaseException as e:
+            print(pet_path)
+        
+        image_name = Path(pet_path).stem
+        
+        out_dict = {}
+        
+        if self.class_cond == True:
+            pet_lab = 1
+            out_dict["y"] = np.array(pet_lab, dtype=np.int64)
+        
+        return pet_image, out_dict, image_name
 
 class PETnCTDataset(Dataset):
     '''

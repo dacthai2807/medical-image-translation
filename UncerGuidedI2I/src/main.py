@@ -1,12 +1,11 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 from ds import *
 from trainer import *
 from losses import *
 from networks import *
-
-import os
 from torch.utils.data import DataLoader
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 DATA_PATH = '/home/PET-CT/splited_data_15k'
 IMAGE_SIZE = 256
@@ -30,11 +29,11 @@ def get_dataset_by_stage(data_path, stage, image_size, ct_max_pixel, pet_max_pix
     ct_paths = get_image_paths_from_dir(os.path.join(data_path, f'{stage}/A'))
     pet_paths = get_image_paths_from_dir(os.path.join(data_path, f'{stage}/B'))
 
-    return PETCTDataset(ct_paths, pet_paths, image_size, ct_max_pixel, pet_max_pixel, flip)
+    return PETCTDataset(ct_paths, pet_paths, image_size, ct_max_pixel, pet_max_pixel, flip, stage)
 
 def main():
     train_dataset = get_dataset_by_stage(DATA_PATH, 'train', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, True)
-    val_dataset = get_dataset_by_stage(DATA_PATH, 'val', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, False)
+    val_dataset = get_dataset_by_stage(DATA_PATH, 'test', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, False)
     test_dataset = get_dataset_by_stage(DATA_PATH, 'test', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, False)
 
     train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=16)
@@ -42,20 +41,22 @@ def main():
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
 
     # init net and train
-    netG_A = CasUNet(1,1)
+    # netG_A = CasUNet(1,1)
+    netG_A = UNet(3,1)
     netD_A = NLayerDiscriminator(1, n_layers=4)
     netG_A, netD_A = train_I2I_CasUNetGAN(
         netG_A, netD_A,
         train_dataloader, valid_dataloader,
         dtype=torch.cuda.FloatTensor,
         device='cuda',
-        num_epochs=50,
-        init_lr=1e-5,
-        ckpt_path='../ckpt1/CT2PET_CasUNet',
+        num_epochs=30,
+        init_lr=1e-4,
+        ckpt_path='../ckpt_wacv_2/conditional_CT2PET_UNet',
     ) 
 
     # init net and train
     # netG_A = CasUNet_3head(1,1)
+    # netG_A = UNet_3head(3,1)
     # netD_A = NLayerDiscriminator(1, n_layers=4)
     # netG_A, netD_A = train_I2I_CasUNet3headGAN(
     #     netG_A, netD_A,
@@ -64,13 +65,14 @@ def main():
     #     device='cuda',
     #     num_epochs=50,
     #     init_lr=1e-5,
-    #     ckpt_path='../ckpt1/CT2PET_CasUNet_3head_block1',
+    #     ckpt_path='../ckpt_wacv_1/conditional_CT2PET_UNet_3head_block1',
     # ) 
 
     # init net and train
     # netG_A1 = CasUNet_3head(1,1)
-    # netG_A1.load_state_dict(torch.load('/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt1/CT2PET_CasUNet_3head_block1_G_best_mape_1228.9311127655208.pth'))
-    # netG_A2 = UNet_3head(4,1)
+    # netG_A1 = UNet_3head(3,1)
+    # netG_A1.load_state_dict(torch.load('/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv/conditional_CT2PET_UNet_3head_block1_G_best_mae_0.015252234414219856.pth'))
+    # netG_A2 = UNet_3head(6,1)
 
     # netD_A = NLayerDiscriminator(1, n_layers=4)
     # list_netG_A, list_netD_A = train_I2I_Sequence_CasUNet3headGAN(
@@ -80,7 +82,7 @@ def main():
     #     device='cuda',
     #     num_epochs=50,
     #     init_lr=1e-5,
-    #     ckpt_path='../ckpt1/CT2PET_Sequence_CasUNet_3head_block2',
+    #     ckpt_path='../ckpt_wacv_1/conditional_CT2PET_UNet_3head_block2',
     # )
 
     # init net and train

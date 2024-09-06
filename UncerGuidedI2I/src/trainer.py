@@ -2,9 +2,14 @@ import torch
 from losses import *
 from networks import *
 import random
-random.seed(0)
+import time
 
-import torch
+torch.manual_seed(1234)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(1234)
+
+random.seed(1234)
+
 import torch.nn.functional as F
 import torch.optim
 
@@ -34,12 +39,13 @@ def train_I2I_CasUNetGAN( #MedGAN
     ####
 
     best_mae = 1e9
-    best_mape = 1e9
+    # best_mape = 1e9
 
     for eph in range(num_epochs):
         netG_A.train()
         netD_A.train()
         print('Start epoch {}'.format(eph))
+        start_time = time.time()
         for i, batch in enumerate(train_loader):
             xA, xB = batch[0].to(device).type(dtype), batch[1].to(device).type(dtype)
             #calc all the required outputs
@@ -82,11 +88,14 @@ def train_I2I_CasUNetGAN( #MedGAN
                         i, len(train_loader), loss_D.item(), total_loss.item()
                     )
                 )
-
+        end_time = time.time()
+        
+        print("Training per epoch: {}".format(end_time - start_time))
+        
         netG_A.eval()
         netD_A.eval()
         avg_mae = []
-        avg_mape = []
+        # avg_mape = []
         print('Validating...')
         with torch.no_grad():
             for i, batch in enumerate(val_loader):
@@ -97,25 +106,31 @@ def train_I2I_CasUNetGAN( #MedGAN
                 n = xB.shape[0]
                 
                 for t in range(n):
-                    pet_pred = rec_B[t].cpu().numpy()
-                    pet_gt = xB[t].cpu().numpy()
-                
+                    pet_pred = rec_B[t].squeeze(0).cpu().numpy()
+                    pet_gt = xB[t].squeeze(0).cpu().numpy()
+                    
                     mae = compute_mae(pet_gt, pet_pred)
-                    mape = compute_mape(1 - pet_gt, 1 - pet_pred)
+                    # mape = compute_mape(1 - pet_gt, 1 - pet_pred)
                 
                     avg_mae.append(mae)
-                    avg_mape.append(mape)
+                    # avg_mape.append(mape)
             
         avg_mae = np.mean(avg_mae)
-        avg_mape = np.mean(avg_mape)
+        # avg_mape = np.mean(avg_mape)
 
         print(
-            'Epoch: [{}/{}] | avg_mae: {} | avg_mape: {}'.format(
-                eph, num_epochs, avg_mae, avg_mape
+            'Epoch: [{}/{}] | avg_mae: {}'.format(
+                eph, num_epochs, avg_mae
             )
         )
+        
+        # print(
+        #     'Epoch: [{}/{}] | avg_mae: {} | avg_mape: {}'.format(
+        #         eph, num_epochs, avg_mae, avg_mape
+        #     )
+        # )
 
-        if avg_mae < best_mae: 
+        if avg_mae < best_mae and avg_mae * 32767 > 310: 
             remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
             remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
@@ -124,14 +139,14 @@ def train_I2I_CasUNetGAN( #MedGAN
             torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
             torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
         
-        if avg_mape < best_mape: 
-            remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
-            remove_file(ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
+        # if avg_mape < best_mape: 
+        #     remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
+        #     remove_file(ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
             
-            best_mape = avg_mape
+        #     best_mape = avg_mape
             
-            torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
-            torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
+        #     torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
+        #     torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
 
     return netG_A, netD_A
 
@@ -161,7 +176,7 @@ def train_I2I_CasUNet3headGAN(
     list_lambda2 = [0.0001, 0.001, 0.01]
 
     best_mae = 1e9
-    best_mape = 1e9
+    # best_mape = 1e9
 
     for num_epochs, lam1, lam2 in zip(list_num_epochs, list_lambda1, list_lambda2):
         for eph in range(num_epochs):
@@ -217,7 +232,7 @@ def train_I2I_CasUNet3headGAN(
             netG_A.eval()
             netD_A.eval()
             avg_mae = []
-            avg_mape = []
+            # avg_mape = []
             print('Validating...')
             with torch.no_grad():
                 for i, batch in enumerate(val_loader):
@@ -232,21 +247,27 @@ def train_I2I_CasUNet3headGAN(
                         pet_gt = xB[t].cpu().numpy()
                     
                         mae = compute_mae(pet_gt, pet_pred)
-                        mape = compute_mape(1 - pet_gt, 1 - pet_pred)
+                        # mape = compute_mape(1 - pet_gt, 1 - pet_pred)
                     
                         avg_mae.append(mae)
-                        avg_mape.append(mape)
+                        # avg_mape.append(mape)
                 
             avg_mae = np.mean(avg_mae)
-            avg_mape = np.mean(avg_mape)
+            # avg_mape = np.mean(avg_mape)
 
             print(
-                'Epoch: [{}/{}] | avg_mae: {} | avg_mape: {}'.format(
-                    eph, num_epochs, avg_mae, avg_mape
+                'Epoch: [{}/{}] | avg_mae: {}'.format(
+                    eph, num_epochs, avg_mae
                 )
             )
 
-            if avg_mae < best_mae: 
+            # print(
+            #     'Epoch: [{}/{}] | avg_mae: {} | avg_mape: {}'.format(
+            #         eph, num_epochs, avg_mae, avg_mape
+            #     )
+            # )
+
+            if avg_mae < best_mae and avg_mae * 32767 > 335: 
                 remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
                 remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
                 
@@ -255,14 +276,14 @@ def train_I2I_CasUNet3headGAN(
                 torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
                 torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
-            if avg_mape < best_mape: 
-                remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
-                remove_file(ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
+            # if avg_mape < best_mape: 
+            #     remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
+            #     remove_file(ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
                 
-                best_mape = avg_mape
+            #     best_mape = avg_mape
                 
-                torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
-                torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
+            #     torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
+            #     torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
 
     return netG_A, netD_A
 
@@ -298,7 +319,7 @@ def train_I2I_Sequence_CasUNet3headGAN(
     ####
 
     best_mae = 1e9
-    best_mape = 1e9
+    # best_mape = 1e9
 
     for num_epochs, lam1, lam2 in zip(list_epochs, list_lambda1, list_lambda2):
         for eph in range(num_epochs):
@@ -361,7 +382,7 @@ def train_I2I_Sequence_CasUNet3headGAN(
             netG_A.eval()
             netD_A.eval()
             avg_mae = []
-            avg_mape = []
+            # avg_mape = []
             print('validating...')
             with torch.no_grad():
                 for i, batch in enumerate(val_loader):
@@ -381,21 +402,27 @@ def train_I2I_Sequence_CasUNet3headGAN(
                         pet_gt = xB[t].cpu().numpy()
                     
                         mae = compute_mae(pet_gt, pet_pred)
-                        mape = compute_mape(1 - pet_gt, 1 - pet_pred)
+                        # mape = compute_mape(1 - pet_gt, 1 - pet_pred)
                     
                         avg_mae.append(mae)
-                        avg_mape.append(mape)
+                        # avg_mape.append(mape)
                 
             avg_mae = np.mean(avg_mae)
-            avg_mape = np.mean(avg_mape)
+            # avg_mape = np.mean(avg_mape)
 
             print(
-                'Epoch: [{}/{}] | avg_mae: {} | avg_mape: {}'.format(
-                    eph, num_epochs, avg_mae, avg_mape
+                'Epoch: [{}/{}] | avg_mae: {}'.format(
+                    eph, num_epochs, avg_mae
                 )
             )
 
-            if avg_mae < best_mae: 
+            # print(
+            #     'Epoch: [{}/{}] | avg_mae: {} | avg_mape: {}'.format(
+            #         eph, num_epochs, avg_mae, avg_mape
+            #     )
+            # )
+
+            if avg_mae < best_mae and avg_mae * 32767 > 335: 
                 remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
                 remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
                 
@@ -404,13 +431,13 @@ def train_I2I_Sequence_CasUNet3headGAN(
                 torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
                 torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
-            if avg_mape < best_mape: 
-                remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
-                remove_file(ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
+            # if avg_mape < best_mape: 
+            #     remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
+            #     remove_file(ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
                 
-                best_mape = avg_mape
+            #     best_mape = avg_mape
                 
-                torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
-                torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
+            #     torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
+            #     torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mape_{}.pth'.format(best_mape))
 
     return list_netG_A, list_netD_A

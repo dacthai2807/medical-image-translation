@@ -5,7 +5,7 @@ Train a noised image classifier on ImageNet.
 import argparse
 import os
 import sys
-#sys.path.append('/mnt/disk3/projects/thaind/Medical-Image-Synthesis/guided-diffusion')
+sys.path.append('/home/PET-CT/thaind/medical-image-translation/guided-diffusion')
 
 import blobfile as bf
 import torch as th
@@ -13,10 +13,11 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel.distributed import DistributedDataParallel as DDP
 from torch.optim import AdamW
+from torch.utils.data import DataLoader
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.fp16_util import MixedPrecisionTrainer
-from guided_diffusion.image_datasets import load_data, load_PETnCT_data
+from guided_diffusion.image_datasets import load_data, load_PETnCT_data, PairedPETnCTDataset
 from guided_diffusion.resample import create_named_schedule_sampler
 from guided_diffusion.script_util import (
     add_dict_to_argparser,
@@ -26,6 +27,35 @@ from guided_diffusion.script_util import (
 )
 from guided_diffusion.train_util import parse_resume_step_from_filename, log_loss_dict
 
+DATA_PATH = '/home/PET-CT/splited_data_15k'
+IMAGE_SIZE = 256
+CT_MAX = 2047
+PET_MAX = 32767
+BATCH_SIZE = 16
+
+def get_image_paths_from_dir(fdir):
+    flist = os.listdir(fdir)
+    flist.sort()
+    image_paths = []
+    for i in range(0, len(flist)):
+        fpath = os.path.join(fdir, flist[i])
+        if os.path.isdir(fpath):
+            image_paths.extend(get_image_paths_from_dir(fpath))
+        else:
+            image_paths.append(fpath)
+    return image_paths
+
+def get_dataset_by_stage(data_path, stage, image_size, ct_max_pixel, pet_max_pixel, flip):
+    ct_paths = get_image_paths_from_dir(os.path.join(data_path, f'{stage}/A'))
+    pet_paths = get_image_paths_from_dir(os.path.join(data_path, f'{stage}/B'))
+
+    return PairedPETnCTDataset(ct_paths, pet_paths, image_size, ct_max_pixel, pet_max_pixel, flip)
+
+def load_Paired_PETnCT_data(
+    data_loader,
+):
+    while True:
+        yield from data_loader
 
 def main():
     args = create_argparser().parse_args()
@@ -81,25 +111,34 @@ def main():
     #     random_crop=True,
     # )
 
-    ct_dir = '../datasets/108/CT'
-    pet_dir = '../datasets/108/PET'
+    # ct_dir = '../datasets/108/CT'
+    # pet_dir = '../datasets/108/PET'
     # ct_dir = '../datasets/multimodal_slices/ct'
     # pet_dir = '../datasets/multimodal_slices/pet'
     # train_split_dir = '../datasets/train_split.txt'
 
-    train_flist = []
+    # train_flist = []
     
     # with open(train_split_dir, 'r') as f:
     #     train_flist = f.read().split('\n')
 
     # train_flist = train_flist[:-1]
 
-    NUM_TRAINING = 4500
+    # NUM_TRAINING = 4500
 
-    for i in range(NUM_TRAINING):
-        train_flist.append('{}.npy'.format(i))
+    # for i in range(NUM_TRAINING):
+    #     train_flist.append('{}.npy'.format(i))
 
-    data = load_PETnCT_data(pet_dir, ct_dir, train_flist, train_flist, args.batch_size, class_cond=True)
+    train_dataset = get_dataset_by_stage(DATA_PATH, 'train', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, True)
+    val_dataset = get_dataset_by_stage(DATA_PATH, 'val', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, False)
+    test_dataset = get_dataset_by_stage(DATA_PATH, 'test', (IMAGE_SIZE, IMAGE_SIZE), CT_MAX, PET_MAX, False)
+
+    train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=16)
+    valid_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
+    test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
+    
+    # data = load_PET_data(pet_dir, train_flist, args.batch_size)
+    data = load_Paired_PETnCT_data(train_dataloader)
 
     if args.val_data_dir:
         val_data = load_data(
@@ -125,7 +164,7 @@ def main():
     logger.log("training classifier model...")
 
     def forward_backward_log(data_loader, prefix="train"):
-        batch, extra = next(data_loader)
+        batch, extra, _ = next(data_loader)
         labels = extra["y"].to(dist_util.dev())
 
         batch = batch.to(dist_util.dev())
