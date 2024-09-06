@@ -59,8 +59,8 @@ def main():
     # valid_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
 
-    CKPT_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv_1/conditional_CT2PET_UNet_3head_block2_G_best_mae_0.018693456426262856.pth'
-    SAMPLE_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/samples/cUPGAN_1'
+    CKPT_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv_3/conditional_CT2PET_UNet_3head_block2_G_best_mae_0.023152105510234833.pth'
+    SAMPLE_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/samples/cUPGAN_4'
     
     # netG_A = CasUNet(1,1)
     # netG_A = CasUNet_3head(1,1)

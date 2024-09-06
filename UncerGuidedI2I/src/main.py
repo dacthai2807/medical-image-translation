@@ -1,6 +1,15 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
+import torch
+import random
+
+torch.manual_seed(123)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(123)
+
+random.seed(123)
+
 from ds import *
 from trainer import *
 from losses import *
@@ -42,17 +51,17 @@ def main():
 
     # init net and train
     # netG_A = CasUNet(1,1)
-    netG_A = UNet(3,1)
-    netD_A = NLayerDiscriminator(1, n_layers=4)
-    netG_A, netD_A = train_I2I_CasUNetGAN(
-        netG_A, netD_A,
-        train_dataloader, valid_dataloader,
-        dtype=torch.cuda.FloatTensor,
-        device='cuda',
-        num_epochs=30,
-        init_lr=1e-4,
-        ckpt_path='../ckpt_wacv_2/conditional_CT2PET_UNet',
-    ) 
+    # netG_A = UNet(3,1)
+    # netD_A = NLayerDiscriminator(1, n_layers=4)
+    # netG_A, netD_A = train_I2I_CasUNetGAN(
+    #     netG_A, netD_A,
+    #     train_dataloader, valid_dataloader,
+    #     dtype=torch.cuda.FloatTensor,
+    #     device='cuda',
+    #     num_epochs=30,
+    #     init_lr=1e-4,
+    #     ckpt_path='../ckpt_wacv_2/conditional_CT2PET_UNet',
+    # ) 
 
     # init net and train
     # netG_A = CasUNet_3head(1,1)
@@ -70,20 +79,20 @@ def main():
 
     # init net and train
     # netG_A1 = CasUNet_3head(1,1)
-    # netG_A1 = UNet_3head(3,1)
-    # netG_A1.load_state_dict(torch.load('/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv/conditional_CT2PET_UNet_3head_block1_G_best_mae_0.015252234414219856.pth'))
-    # netG_A2 = UNet_3head(6,1)
+    netG_A1 = UNet_3head(3,1)
+    netG_A1.load_state_dict(torch.load('/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv/conditional_CT2PET_UNet_3head_block1_G_best_mae_0.015252234414219856.pth'))
+    netG_A2 = UNet_3head(6,1)
 
-    # netD_A = NLayerDiscriminator(1, n_layers=4)
-    # list_netG_A, list_netD_A = train_I2I_Sequence_CasUNet3headGAN(
-    #     [netG_A1, netG_A2], [netD_A],
-    #     train_dataloader, valid_dataloader,
-    #     dtype=torch.cuda.FloatTensor,
-    #     device='cuda',
-    #     num_epochs=50,
-    #     init_lr=1e-5,
-    #     ckpt_path='../ckpt_wacv_1/conditional_CT2PET_UNet_3head_block2',
-    # )
+    netD_A = NLayerDiscriminator(1, n_layers=4)
+    list_netG_A, list_netD_A = train_I2I_Sequence_CasUNet3headGAN(
+        [netG_A1, netG_A2], [netD_A],
+        train_dataloader, valid_dataloader,
+        dtype=torch.cuda.FloatTensor,
+        device='cuda',
+        num_epochs=30,
+        init_lr=5e-5,
+        ckpt_path='../ckpt_wacv_3/conditional_CT2PET_UNet_3head_block2',
+    )
 
     # init net and train
     # netG_A1 = CasUNet_3head(1,1)

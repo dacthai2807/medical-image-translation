@@ -4,12 +4,6 @@ from networks import *
 import random
 import time
 
-torch.manual_seed(1234)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(1234)
-
-random.seed(1234)
-
 import torch.nn.functional as F
 import torch.optim
 
@@ -131,13 +125,13 @@ def train_I2I_CasUNetGAN( #MedGAN
         # )
 
         if avg_mae < best_mae and avg_mae * 32767 > 310: 
-            remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
-            remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
+            # remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
+            # remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
             best_mae = avg_mae
             
             torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
-            torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
+            # torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
         
         # if avg_mape < best_mape: 
         #     remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
@@ -327,7 +321,7 @@ def train_I2I_Sequence_CasUNet3headGAN(
             netD_A.train()
             print('Start epoch {}'.format(eph))
             for i, batch in enumerate(train_loader):
-                if i > 1000:
+                if i > 900:
                     break
                 
                 xA, xB = batch[0].to(device).type(dtype), batch[1].to(device).type(dtype)
@@ -398,9 +392,9 @@ def train_I2I_Sequence_CasUNet3headGAN(
                     n = xB.shape[0]
                     
                     for t in range(n):
-                        pet_pred = rec_B[t].cpu().numpy()
-                        pet_gt = xB[t].cpu().numpy()
-                    
+                        pet_pred = rec_B[t].squeeze(0).cpu().numpy()
+                        pet_gt = xB[t].squeeze(0).cpu().numpy()
+
                         mae = compute_mae(pet_gt, pet_pred)
                         # mape = compute_mape(1 - pet_gt, 1 - pet_pred)
                     
@@ -423,13 +417,13 @@ def train_I2I_Sequence_CasUNet3headGAN(
             # )
 
             if avg_mae < best_mae and avg_mae * 32767 > 335: 
-                remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
-                remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
+                # remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
+                # remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
                 
                 best_mae = avg_mae
                 
                 torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
-                torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
+                # torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
             # if avg_mape < best_mape: 
             #     remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
