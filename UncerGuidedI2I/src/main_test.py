@@ -59,38 +59,38 @@ def main():
     # valid_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
     test_dataloader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=16)
 
-    CKPT_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv_3/conditional_CT2PET_UNet_3head_block2_G_best_mae_0.023152105510234833.pth'
-    SAMPLE_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/samples/cUPGAN_4'
+    CKPT_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv_2/conditional_CT2PET_UNet_G_best_mae_0.01753898710012436.pth'
+    SAMPLE_PATH = '/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/samples/cMedGAN_6'
     
     # netG_A = CasUNet(1,1)
     # netG_A = CasUNet_3head(1,1)
-    # netG_A = UNet(3,1)
-    # netG_A.load_state_dict(torch.load(CKPT_PATH))
-    # netG_A.type(torch.FloatTensor)
-    # netG_A.eval()
+    netG_A = UNet(3,1)
+    netG_A.load_state_dict(torch.load(CKPT_PATH))
+    netG_A.type(torch.FloatTensor)
+    netG_A.eval()
     
     # netG_A1 = CasUNet_3head(1,1)
-    netG_A1 = UNet_3head(3,1)
-    netG_A1.load_state_dict(torch.load('/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv/conditional_CT2PET_UNet_3head_block1_G_best_mae_0.015252234414219856.pth'))
-    netG_A1.type(torch.FloatTensor)
-    netG_A1.eval()
-    netG_A2 = UNet_3head(6,1)
-    netG_A2.load_state_dict(torch.load(CKPT_PATH))
-    netG_A2.type(torch.FloatTensor)
-    netG_A2.eval()
+    # netG_A1 = UNet_3head(3,1)
+    # netG_A1.load_state_dict(torch.load('/home/PET-CT/thaind/medical-image-translation/UncerGuidedI2I/ckpt_wacv/conditional_CT2PET_UNet_3head_block1_G_best_mae_0.015252234414219856.pth'))
+    # netG_A1.type(torch.FloatTensor)
+    # netG_A1.eval()
+    # netG_A2 = UNet_3head(6,1)
+    # netG_A2.load_state_dict(torch.load(CKPT_PATH))
+    # netG_A2.type(torch.FloatTensor)
+    # netG_A2.eval()
     
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             xA, xB, x_name = batch[0].type(torch.FloatTensor), batch[1].type(torch.FloatTensor), batch[2]
             
-            # rec_B = netG_A(xA)
+            rec_B = netG_A(xA)
             # rec_B, rec_alpha_B, rec_beta_B = netG_A(xA)
-            for nid, netG in enumerate([netG_A1, netG_A2]):
-                if nid == 0:
-                    rec_B, rec_alpha_B, rec_beta_B = netG(xA)
-                else:
-                    xch = torch.cat([rec_B, rec_alpha_B, rec_beta_B, xA], dim=1)
-                    rec_B, rec_alpha_B, rec_beta_B = netG(xch)
+            # for nid, netG in enumerate([netG_A1, netG_A2]):
+            #     if nid == 0:
+            #         rec_B, rec_alpha_B, rec_beta_B = netG(xA)
+            #     else:
+            #         xch = torch.cat([rec_B, rec_alpha_B, rec_beta_B, xA], dim=1)
+            #         rec_B, rec_alpha_B, rec_beta_B = netG(xch)
             
             n = xB.shape[0]
             

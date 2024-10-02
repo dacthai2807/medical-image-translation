@@ -41,6 +41,8 @@ def train_I2I_CasUNetGAN( #MedGAN
         print('Start epoch {}'.format(eph))
         start_time = time.time()
         for i, batch in enumerate(train_loader):
+            if i > 50: 
+                break
             xA, xB = batch[0].to(device).type(dtype), batch[1].to(device).type(dtype)
             #calc all the required outputs
             rec_B = netG_A(xA)
