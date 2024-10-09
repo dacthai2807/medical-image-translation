@@ -41,7 +41,7 @@ def train_I2I_CasUNetGAN( #MedGAN
         print('Start epoch {}'.format(eph))
         start_time = time.time()
         for i, batch in enumerate(train_loader):
-            if i > 50: 
+            if i > 1000: 
                 break
             xA, xB = batch[0].to(device).type(dtype), batch[1].to(device).type(dtype)
             #calc all the required outputs
@@ -126,7 +126,7 @@ def train_I2I_CasUNetGAN( #MedGAN
         #     )
         # )
 
-        if avg_mae < best_mae and avg_mae * 32767 > 310: 
+        if avg_mae < best_mae: 
             # remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
             # remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
@@ -263,14 +263,14 @@ def train_I2I_CasUNet3headGAN(
             #     )
             # )
 
-            if avg_mae < best_mae and avg_mae * 32767 > 335: 
-                remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
-                remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
+            if avg_mae < best_mae: 
+                # remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
+                # remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
                 
                 best_mae = avg_mae
                 
                 torch.save(netG_A.state_dict(), ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
-                torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
+                # torch.save(netD_A.state_dict(), ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
             
             # if avg_mape < best_mape: 
             #     remove_file(ckpt_path+'_G_best_mape_{}.pth'.format(best_mape))
@@ -323,7 +323,7 @@ def train_I2I_Sequence_CasUNet3headGAN(
             netD_A.train()
             print('Start epoch {}'.format(eph))
             for i, batch in enumerate(train_loader):
-                if i > 900:
+                if i > 1000:
                     break
                 
                 xA, xB = batch[0].to(device).type(dtype), batch[1].to(device).type(dtype)
@@ -418,7 +418,7 @@ def train_I2I_Sequence_CasUNet3headGAN(
             #     )
             # )
 
-            if avg_mae < best_mae and avg_mae * 32767 > 335: 
+            if avg_mae < best_mae: 
                 # remove_file(ckpt_path+'_G_best_mae_{}.pth'.format(best_mae))
                 # remove_file(ckpt_path+'_D_best_mae_{}.pth'.format(best_mae))
                 

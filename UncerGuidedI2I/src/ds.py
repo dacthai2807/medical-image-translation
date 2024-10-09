@@ -41,19 +41,19 @@ class PETCTDataset(Dataset):
         pet_path = self.pet_paths[index]
         
         try:
-            np_ct_image = np.load(ct_path, allow_pickle=True)
-            np_ct_image = np_ct_image / float(self.ct_max_pixel)
+            np_ct_image = np.load(ct_path, allow_pickle=True)[0]
+            # np_ct_image = np_ct_image / float(self.ct_max_pixel)
 
             ct_image = Image.fromarray(np_ct_image) 
             ct_image = transform(ct_image) 
 
-            np_pet_image = np.load(pet_path, allow_pickle=True)
-            np_pet_image = np_pet_image / float(self.pet_max_pixel)
+            np_pet_image = np.load(pet_path, allow_pickle=True)[0]
+            # np_pet_image = np_pet_image / float(self.pet_max_pixel)
             
             pet_image = Image.fromarray(np_pet_image) 
             pet_image = transform(pet_image) 
             
-            pet_image = (pet_image - 0.5) * 2.
+            # pet_image = (pet_image - 0.5) * 2.
             
         except BaseException as e:
             print(ct_path)
@@ -61,10 +61,10 @@ class PETCTDataset(Dataset):
         
         image_name = Path(ct_path).stem
         
-        att_map = self.get_attention_map(image_name, ct_image, self.stage)
-        atte_map = self.get_attenuation_map(ct_image, ct_image)
+        # att_map = self.get_attention_map(image_name, ct_image, self.stage)
+        # atte_map = self.get_attenuation_map(ct_image, ct_image)
         
-        ct_image = torch.cat([ct_image, att_map, atte_map], dim=0)
+        # ct_image = torch.cat([ct_image, att_map, atte_map], dim=0)
 
         return ct_image, pet_image, image_name
     
